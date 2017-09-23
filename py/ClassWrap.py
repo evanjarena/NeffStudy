@@ -12,14 +12,15 @@ import numpy as np
 
 class PkDiffer:
 
-    def __init__ (self,pl, zvals, kvals, kperp, kpar, Nkmu2):
+    def __init__ (self,pl, zvals, kvals, kperp, kpar, Nkmu2_row, Nkmu2_col):
         """ returns a list of Pks, each list containins 3D PS"""
         self.zstr=",".join(map(str,zvals+[zvals[-1]+2]))
         self.kvals=kvals
         self.kperp=kperp
         self.kpar=kpar
         self.zvals=zvals
-        self.Nkmu2=Nkmu2
+        self.Nkmu2_row=Nkmu2_row
+        self.Nkmu2_col=Nkmu2_col
         self.plist=copy.deepcopy(pl)
         self.cosmo = Class()
         self.ComputeCosmo(pl)
@@ -93,8 +94,8 @@ class PkDiffer:
                 cpk=np.array(cpk).reshape(kt.shape)
                 M=np.zeros(kt.shape)
                 A=np.zeros(kt.shape)
-                for j in range(self.Nkmu2):
-                    for k in range(self.Nkmu2):
+                for j in range(self.Nkmu2_col):
+                    for k in range(self.Nkmu2_row):
                         m=pl.value('Mkmu2_'+str(i)+str(j)+str(k))
                         a=pl.value('Akmu2_'+str(i)+str(j)+str(k))
                         if (a==0) and (m==0):
@@ -103,7 +104,6 @@ class PkDiffer:
                         M+=X*m
                         A+=X*a
                 cpk=A+cpk*(1+M)
-
                 if (mode=='store_fid'):
                     self.cpk_cached.append(cpk)
                     self.mu_cached.append(mu)

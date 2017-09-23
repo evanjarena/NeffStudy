@@ -40,5 +40,13 @@ class BMX(TracerPk):
         snr=np.array(snr)
         return snr
 
+    def getFisher(self):
+        return TracerPk.calcFisher(self)
+
 # Create an instance of this class.
-BMX()
+B=BMX()
+B.getFisher()
+#F_bkmu2=B.getFisher(kmu2=True)
+#print(F_bkmu2)
+#F_b=B.getFisher(kmu2=False)
+#print(F_b)
