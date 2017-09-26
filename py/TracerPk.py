@@ -64,8 +64,8 @@ class TracerPk(FishMat):
         # Add (a_zij)(kt^i)(mu^2)^j parameters to parameter list
         # Note that the fiducial a_zij values are zero
         for i in range(self.Nz):
-            for j in range(self.Nkmu2_col):
-                for k in range(self.Nkmu2_row):
+            for j in range(self.Nkmu2_row):
+                for k in range(self.Nkmu2_col):
                     pl.append(Parameter('Mkmu2_'+str(i)+str(j)+str(k),0,''))
                     pl.append(Parameter('Akmu2_'+str(i)+str(j)+str(k),0,''))
         self.Nwbkmu2=len(pl) # with biases and kmu2 parameters
@@ -94,7 +94,7 @@ class TracerPk(FishMat):
         for i in range(self.Nkmu2_row):
             kmu2_row=[]
             for j in range(self.Nkmu2_col):
-                kmu2_element=(self.kt**i)+(self.mu**2.)**j
+                kmu2_element=(self.kt**i)*(self.mu**2.)**j
                 kmu2_row.append(kmu2_element)
             kmu2.append(kmu2_row)
         return kmu2

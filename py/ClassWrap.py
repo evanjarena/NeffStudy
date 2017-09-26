@@ -94,8 +94,8 @@ class PkDiffer:
                 cpk=np.array(cpk).reshape(kt.shape)
                 M=np.zeros(kt.shape)
                 A=np.zeros(kt.shape)
-                for j in range(self.Nkmu2_col):
-                    for k in range(self.Nkmu2_row):
+                for j in range(self.Nkmu2_row):
+                    for k in range(self.Nkmu2_col):
                         m=pl.value('Mkmu2_'+str(i)+str(j)+str(k))
                         a=pl.value('Akmu2_'+str(i)+str(j)+str(k))
                         if (a==0) and (m==0):
