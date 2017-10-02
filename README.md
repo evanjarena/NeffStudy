@@ -12,8 +12,8 @@ Modules should be run from the parent directory, e.g.:
 - h5py
 - pickle
 - CLASS and/or CAMB Boltzmann codes:
--- [CLASS code and its python wrapper classy](http://class-code.net/)
--- CAMB code and its python wrapper(http://camb.info)
+- [CLASS code and its python wrapper classy](http://class-code.net/)
+- CAMB code and its python wrapper(http://camb.info)
 
 Here, the signal-to-noise ratio (SNR) is computed in a simulation from Cosmic Visions:
 - [SNR Data Cube from Cosmic Visions](http://www.phas.ubc.ca/~richard/sn_lowz_expA_50K.h5). This h5py file should be kept in the parent directory.
