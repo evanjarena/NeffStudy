@@ -2,8 +2,10 @@
 Study Neff constraints S4+others
 
 Modules should be run from the parent directory, e.g.:
-  `python py/21cm.py`
-  
+  `python py/21cm.py Class`
+  `python py/21cm.py Camb`
+in order to run the Fisher forecast with either the CLASS or CAMB Boltzmann codes.
+
 ## Requirements
 - numpy
 - scipy
