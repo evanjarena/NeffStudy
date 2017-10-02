@@ -12,12 +12,13 @@ import h5py
 class BMX(TracerPk):
 
     def __init__(self):
+        boltzmann_code=sys.argv[1]
         self.da=h5py.File('sn_lowz_expA_50K.h5', 'r') # Data cube from Cosmic Visions
         zvals=self.zvals()
         min_z=zvals[0]
         max_z=zvals[-1]
         SNR=self.SNR()
-        TracerPk.__init__(self, zvals, min_z, max_z, '21cm', SNR)
+        TracerPk.__init__(self, str(boltzmann_code), zvals, min_z, max_z, '21cm', SNR)
 
     def zvals(self):
         """Redshift values in data cube.
@@ -42,6 +43,8 @@ class BMX(TracerPk):
 
     def getFisher(self):
         return TracerPk.calcFisher(self)
+
+boltzmann_code=sys.argv[1]
 
 # Create an instance of this class.
 B=BMX()

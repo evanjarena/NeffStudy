@@ -1,20 +1,21 @@
 #
-# Wrapper for Class.
+# Wrapper for CAMB.
 #
 
 from __future__ import division, print_function
-from classy import Class
+import camb
+from camb import model, initialpower
 import copy
 from scipy.interpolate import interp1d
 from ParameterVec import DefaultParamList, ParamList, Parameter
 import sys
 import numpy as np
 
-class PkDiffer_Class:
+class PkDiffer_Camb:
 
     def __init__ (self,pl, zvals, kvals, kperp, kpar, Nkmu2_row, Nkmu2_col):
         """ returns a list of Pks, each list containins 3D PS"""
-        self.zstr=",".join(map(str,zvals+[zvals[-1]+2]))
+        #self.zstr=",".join(map(str,zvals+[zvals[-1]+2]))
         self.kvals=kvals
         self.kperp=kperp
         self.kpar=kpar
@@ -22,13 +23,19 @@ class PkDiffer_Class:
         self.Nkmu2_row=Nkmu2_row
         self.Nkmu2_col=Nkmu2_col
         self.plist=copy.deepcopy(pl)
-        self.cosmo = Class()
+        self.pars = camb.CAMBparams()
         self.ComputeCosmo(pl)
-        bg=self.cosmo.get_background()
-        zs=bg['z']
-        zs=zs[::-1]
-        Da=interp1d(zs,bg['comov. dist.'])  # cosmo.pk is actually all Mpc units
-        Hi=interp1d(zs,1./(bg['H [1/Mpc]']))  
+        bg=camb.get_background(self.pars)
+        nz = 4620 #number of steps to use for the radial/redshift integration
+        kmax=10  #kmax to use
+        #For Limber result, want integration over \chi (comoving radial distance), from 0 to chi_*.
+        #so get background results to find chistar, set up arrage in chi, and calculate corresponding redshifts
+        chistar = bg.conformal_time(0)- model.tau_maxvis.value
+        chis = np.linspace(0,chistar,nz)
+        zs=bg.redshift_at_comoving_radial_distance(chis)
+        #zs=zs[::-1]
+        Da=interp1d(zs,bg.comoving_radial_distance(zs)) 
+        Hi=interp1d(zs,1./(bg.h_of_z(zs)))  
         self.Da_fid=Da
         self.Hi_fid=Hi
         self.cube0=self.getCube(pl,'store_fid')
@@ -60,19 +67,23 @@ class PkDiffer_Class:
                 mode="normal"
                 self.ComputeCosmo(npl)
             de.append(self.getCube(npl,mode))
-        #dp,dm=de
-        #toret=(dp-dm)/(2*step)
         toret=[(dp-dm)/(2*step) for dp,dm in zip(de[0],de[1])]
         return toret
         
     def getCube(self,pl,mode='normal'):
         """mode defines caching of power spectra for biases
         mode can be 'store_fid', 'use_fid' or normal"""
-        bg=self.cosmo.get_background()
-        zs=bg['z']
-        zs=zs[::-1]
-        Da=interp1d(zs,bg['comov. dist.'])## cosmo.pk is actually all Mpc units
-        Hi=interp1d(zs,1./(bg['H [1/Mpc]'])) # 
+        bg=camb.get_background(self.pars)
+        nz = 100 #4620 #number of steps to use for the radial/redshift integration
+        kmax=10  #kmax to use
+        #For Limber result, want integration over \chi (comoving radial distance), from 0 to chi_*.
+        #so get background results to find chistar, set up arrage in chi, and calculate corresponding redshifts
+        chistar = bg.conformal_time(0)- model.tau_maxvis.value
+        chis = np.linspace(0,chistar,nz)
+        zs=bg.redshift_at_comoving_radial_distance(chis)
+        #zs=zs[::-1]
+        Da=interp1d(zs,bg.comoving_radial_distance(zs))  
+        Hi=interp1d(zs,1./(bg.h_of_z(zs)))   
         if (mode=='store_fid'):
             self.Da_fid=Da
             self.Hi_fid=Hi
@@ -87,10 +98,8 @@ class PkDiffer_Class:
                 kpar_t=self.kpar/Hi(z)*self.Hi_fid(z)
                 kt=np.sqrt(kperp_t**2+kpar_t**2)
                 mu=kpar_t/kt
-                #mu=self.kpar/np.sqrt(self.kperp**2+self.kpar**2)
-                #[print(k) for k in kt.flatten()]
-                #print(len(kt.flatten()))
-                cpk=[self.cosmo.pk(k,z) for k in kt.flatten()]
+                PK=camb.get_matter_power_interpolator(self.pars)  # Get Pk interpolator function
+                cpk=[PK.P(z,k) for k in kt.flatten()]
                 cpk=np.array(cpk).reshape(kt.shape)
                 M=np.zeros(kt.shape)
                 A=np.zeros(kt.shape)
@@ -108,40 +117,42 @@ class PkDiffer_Class:
                     self.cpk_cached.append(cpk)
                     self.mu_cached.append(mu)
             
-            f=self.growth_f(z)
+            f=self.growth_f(z,pl)
             bpk=cpk*(pl.value('b_delta_'+str(i))+pl.value('b_eta_'+str(i))*f*mu**2)**2
             pkl.append(bpk)
             
         return pkl
 
-    def growth_f(self,z):
+    def growth(self,z,pl):
+        om0=pl.value('omegac')+pl.value('omegab')
+        Ez=np.sqrt(1-om0+om0*(1+z)**3.)
+        omz=om0*((1+z)**3.)/(Ez**2.)
+        gr=omz**0.545
+        return gr
+
+    def growth_f(self,z,pl):
         da=0.01
         a=1./(1.+z)
-        gp,g,gm=[self.cosmo.scale_independent_growth_factor(1./ia-1.) for ia in [a+da,a,a-da]]
+        gp,g,gm=[self.growth(1./ia-1,pl) for ia in [a+da,a,a-da]]
         f=a*(gp-gm)/(2*g*da)
         return f
 
     def ComputeCosmo(self,pl):
-        #del self.cosmo
-        #self.cosmo = Class()
-        pars = {
-                'output': 'mPk',
-                'P_k_max_h/Mpc': self.kvals[-1]+3.0,
-                'tau_reio': pl.value('tau'),
-                'omega_cdm': pl.value('omegac'),     
-                'A_s': pl.value('As'),     
-                '100*theta_s' : 100*pl.value('theta'),     
-                'N_ur': pl.value('Neff')-1,  
-                'N_ncdm': 1.0,           
-                'm_ncdm': pl.value('mnu'),       
-                'omega_b': pl.value('omegab'),     
-                'n_s': pl.value('ns'),          
-                'z_pk' : self.zstr,
-        }
-        self.cosmo.set(pars)
-        #print ("Calling class compute...",end='')
-        self.cosmo.compute()
+        self.pars.set_cosmology(tau = pl.value('tau'), 
+                                omch2 = pl.value('omegac'), 
+                                H0 = None,
+                                cosmomc_theta = pl.value('theta'), 
+                                num_massive_neutrinos=1,
+                                mnu = pl.value('mnu'),       
+                                nnu = pl.value('Neff'),
+                                standard_neutrino_neff = pl.value('Neff'),
+                                #massless_neutrinos = pl.value('Neff')-1,  
+                                ombh2 = pl.value('omegab'))
+        #self.pars.set_dark_energy()
+        self.pars.InitPower.set_params(As = pl.value('As'),
+                                       ns = pl.value('ns'))
+        #self.pars.set_matter_power(redshifts=self.zvals, kmax=self.kvals[-1]+3.)
+        #print ("Calling CAMB compute...",end='')
+        #self.pars.NonLinear=model.NonLinear_none
+        #camb.get_results(self.pars)
         #print ("done")
-
-        
- 

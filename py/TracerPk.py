@@ -9,16 +9,19 @@ import scipy.linalg as la
 from scipy.interpolate import interp1d
 from FishMat import FishMat
 from ParameterVec import DefaultParamList, Parameter
-from ClassWrap import PkDiffer
+from ClassWrap import PkDiffer_Class
+from CambWrap import PkDiffer_Camb
 import matplotlib.pyplot as plt
 
 class TracerPk(FishMat):
 
-    def __init__ (self, zvals, zmin, zmax, exp_name='None', SNR='None', kmax=0.5, dk=0.01, fsky=0.5, Nkmu2_row=3, Nkmu2_col=3):
+    def __init__ (self, boltzmann_code, zvals, zmin, zmax, exp_name='None', SNR='None', kmax=0.5, dk=0.01, fsky=0.5, Nkmu2_row=3, Nkmu2_col=3):
         pl=DefaultParamList()
         self.N=len(pl)
         #ignorelist=['tau','As']
         self.ignorelist=[]
+
+        self.boltzmann_code=boltzmann_code
 
         self.kvals=np.arange(dk,kmax+dk,dk)  
         self.Nk=len(self.kvals)
@@ -71,6 +74,9 @@ class TracerPk(FishMat):
         self.Nwbkmu2=len(pl) # with biases and kmu2 parameters
 
         self.pl=pl
+
+    #def Boltzmann_code(self):
+    #    return self.boltzman_code
 
     def Pnoise(self,kpar,kperp,z):
         return 0
@@ -137,8 +143,17 @@ class TracerPk(FishMat):
     def calcFisher(self):
         """Calculates the Fisher matrix
         """
-        print("Setting up class...")        
-        self.PkDiffer=PkDiffer(self.pl,self.zvals, self.kvals, self.kperp, self.kpar, self.Nkmu2_row, self.Nkmu2_col)
+        print("Setting up Boltzmann code...") 
+
+        if self.boltzmann_code=='Class':
+            PkDiffer=PkDiffer_Class(self.pl,self.zvals, self.kvals, self.kperp, self.kpar, self.Nkmu2_row, self.Nkmu2_col)
+        elif self.boltzmann_code=='Camb':
+            PkDiffer=PkDiffer_Camb(self.pl,self.zvals, self.kvals, self.kperp, self.kpar, self.Nkmu2_row, self.Nkmu2_col)
+        else:            
+            print('WTF?')
+        print('Your Boltzmann code of choice is ', self.boltzmann_code, '...')
+        self.PkDiffer=PkDiffer
+
         PkEI=self.getInverseErrors()
         self.PkEI=PkEI
         eps=0.01
