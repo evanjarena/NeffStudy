@@ -123,19 +123,20 @@ class PkDiffer_Camb:
             
         return pkl
 
-    def growth(self,z,pl):
+    def growth_f(self,z,pl):
         om0=pl.value('omegac')+pl.value('omegab')
         Ez=np.sqrt(1-om0+om0*(1+z)**3.)
         omz=om0*((1+z)**3.)/(Ez**2.)
-        gr=omz**0.545
-        return gr
-
-    def growth_f(self,z,pl):
-        da=0.01
-        a=1./(1.+z)
-        gp,g,gm=[self.growth(1./ia-1,pl) for ia in [a+da,a,a-da]]
-        f=a*(gp-gm)/(2*g*da)
+        gamma=0.545
+        f=omz**gamma
         return f
+
+    #def growth_f(self,z,pl):
+    #    da=0.01
+    #    a=1./(1.+z)
+    #    gp,g,gm=[self.growth(1./ia-1,pl) for ia in [a+da,a,a-da]]
+    #    f=a*(gp-gm)/(2*g*da)
+    #    return f
 
     def ComputeCosmo(self,pl):
         self.pars.set_cosmology(tau = pl.value('tau'), 
