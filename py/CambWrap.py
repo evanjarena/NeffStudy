@@ -98,8 +98,7 @@ class PkDiffer_Camb:
                 kpar_t=self.kpar/Hi(z)*self.Hi_fid(z)
                 kt=np.sqrt(kperp_t**2+kpar_t**2)
                 mu=kpar_t/kt
-                PK=camb.get_matter_power_interpolator(self.pars)  # Get Pk interpolator function
-                cpk=[PK.P(z,k) for k in kt.flatten()]
+                cpk=[self.PK.P(z,k) for k in kt.flatten()]
                 cpk=np.array(cpk).reshape(kt.shape)
                 M=np.zeros(kt.shape)
                 A=np.zeros(kt.shape)
@@ -117,26 +116,34 @@ class PkDiffer_Camb:
                     self.cpk_cached.append(cpk)
                     self.mu_cached.append(mu)
             
-            f=self.growth_f(z,pl)
-            bpk=cpk*(pl.value('b_delta_'+str(i))+pl.value('b_eta_'+str(i))*f*mu**2)**2
-            pkl.append(bpk)
-            
+            #f=self.growth_f(z,pl)
+            #bpk=cpk*(pl.value('b_delta_'+str(i))+pl.value('b_eta_'+str(i))*f*mu**2)**2
+
+            #Termporarily use the growth rate f(z) computed in CLASS for consistency.
+            f_class=np.array((0.557204576947,
+                              0.621162012915,
+                              0.689749440772,
+                              0.760259191738,
+                              0.828475706028,
+                              0.889167683497,
+                              0.93742162152,
+                              0.970389709813,
+                              0.988403796107))
+            bpk=cpk*(pl.value('b_delta_'+str(i))+pl.value('b_eta_'+str(i))*f_class[i]*mu**2)**2
+
+            pkl.append(bpk)            
         return pkl
 
     def growth_f(self,z,pl):
+        """Linear growth rate f(z) calculated using section 2.1 of
+        arXiv:1405.1452"""
         om0=pl.value('omegac')+pl.value('omegab')
-        Ez=np.sqrt(1-om0+om0*(1+z)**3.)
+        Ez=np.sqrt(1-om0+om0*(1+z)**3.) #This is defined as H(z)/H(0)
         omz=om0*((1+z)**3.)/(Ez**2.)
         gamma=0.545
         f=omz**gamma
         return f
 
-    #def growth_f(self,z,pl):
-    #    da=0.01
-    #    a=1./(1.+z)
-    #    gp,g,gm=[self.growth(1./ia-1,pl) for ia in [a+da,a,a-da]]
-    #    f=a*(gp-gm)/(2*g*da)
-    #    return f
 
     def ComputeCosmo(self,pl):
         self.pars.set_cosmology(tau = pl.value('tau'), 
@@ -152,8 +159,8 @@ class PkDiffer_Camb:
         #self.pars.set_dark_energy()
         self.pars.InitPower.set_params(As = pl.value('As'),
                                        ns = pl.value('ns'))
-        #self.pars.set_matter_power(redshifts=self.zvals, kmax=self.kvals[-1]+3.)
         #print ("Calling CAMB compute...",end='')
-        #self.pars.NonLinear=model.NonLinear_none
-        #camb.get_results(self.pars)
+
+        #Get matter power spectrum interpolation object
+        self.PK=camb.get_matter_power_interpolator(self.pars)  
         #print ("done")
